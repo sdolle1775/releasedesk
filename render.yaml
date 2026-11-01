@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: releasedesk
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_DIRECT_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: OWNER_USERNAME
+        value: sam
+      - key: OWNER_PASSWORD
+        sync: false
+      - key: DEMO_ENABLED
+        value: 'true'
+      - key: DEMO_USERNAME
+        value: demo
+      - key: DEMO_PASSWORD
+        value: releasedesk
