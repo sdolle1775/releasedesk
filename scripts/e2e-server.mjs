@@ -1,7 +1,7 @@
 import EmbeddedPostgres from 'embedded-postgres';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createPool, migrate } from '../apps/api/dist/db.js';
 import { createApp } from '../apps/api/dist/app.js';
@@ -33,7 +33,7 @@ await basePool.query(`CREATE SCHEMA ${schema}`);
 const url = new URL(databaseUrl);
 url.searchParams.set('options', `-c search_path=${schema}`);
 databaseUrl = url.toString();
-await migrate(databaseUrl);
+await migrate(databaseUrl, schema);
 const pool = createPool(databaseUrl);
 const config = {
   NODE_ENV: 'test',
@@ -78,7 +78,11 @@ async function stop() {
   await basePool.query(`DROP SCHEMA ${schema} CASCADE`);
   await basePool.end();
   if (postgres) await postgres.stop();
-  if (directory) await rm(directory, { recursive: true, force: true });
+  if (directory) {
+    if (!resolve(directory).startsWith(resolve(tmpdir()) + sep + 'releasedesk-e2e-'))
+      throw new Error('Unexpected temporary database path');
+    await rm(directory, { recursive: true, force: true });
+  }
   process.exit(0);
 }
 process.on('SIGTERM', stop);

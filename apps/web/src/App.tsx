@@ -1,6 +1,15 @@
 import { createContext, useContext, useState, lazy, Suspense, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, NavLink, Navigate, Route, Routes, useNavigate, useBlocker } from 'react-router-dom';
+import {
+  Link,
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  useNavigate,
+  useBlocker,
+  useLocation,
+} from 'react-router-dom';
 import {
   ArrowUpRight,
   BookOpen,
@@ -42,6 +51,7 @@ export function Logo() {
   );
 }
 export function App() {
+  const routeLocation = useLocation();
   const session = useQuery({ queryKey: ['session'], queryFn: getSession, staleTime: Infinity });
   const [dirty, setDirty] = useState(false);
   const blocker = useBlocker(dirty);
@@ -66,7 +76,10 @@ export function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/repositories/:id" element={<RepositoryPage />} />
-                <Route path="/releases/:id" element={<ReleasePage />} />
+                <Route
+                  path="/releases/:id"
+                  element={<ReleasePage key={routeLocation.pathname} />}
+                />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

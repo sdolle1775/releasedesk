@@ -1,7 +1,7 @@
 import EmbeddedPostgres from 'embedded-postgres';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { createServer } from 'node:net';
 export default async function setup() {
   if (process.env.TEST_DATABASE_URL) return;
@@ -30,6 +30,8 @@ export default async function setup() {
   process.env.TEST_DATABASE_URL = `postgres://releasedesk:releasedesk@127.0.0.1:${port}/releasedesk_test`;
   return async () => {
     await postgres.stop();
+    if (!resolve(directory).startsWith(resolve(tmpdir()) + sep + 'releasedesk-test-'))
+      throw new Error('Unexpected temporary database path');
     await rm(directory, { recursive: true, force: true });
   };
 }

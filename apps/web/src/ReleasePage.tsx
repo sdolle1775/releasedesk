@@ -38,6 +38,8 @@ export function ReleasePage() {
   const release = useQuery({
     queryKey: ['release', id],
     queryFn: () => api<ReleaseDetail>(`/releases/${id}`),
+    refetchInterval: (query) =>
+      query.state.data?.syncRuns.some((run) => run.status === 'running') ? 2000 : false,
   });
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -52,7 +54,7 @@ export function ReleasePage() {
   const [title, setTitle] = useState('');
   const [newCheck, setNewCheck] = useState('');
   const [history, setHistory] = useState(false);
-  const dirty = editing.size > 0 || rename;
+  const dirty = editing.size > 0 || rename || !!newCheck.trim();
   useEffect(() => {
     setDirty(dirty);
     const handler = (event: BeforeUnloadEvent) => {
@@ -94,7 +96,10 @@ export function ReleasePage() {
   const finalized = data.status === 'finalized';
   const completed = data.checklist.filter((c) => c.completed).length;
   const missing = data.entries.filter((e) => e.missing && !e.excluded).length;
-  const activeSync = data.syncRuns.some((r) => r.status === 'running');
+  const activeSync = data.syncRuns.some(
+    (r) =>
+      r.status === 'running' && release.dataUpdatedAt - new Date(r.startedAt).getTime() < 120000,
+  );
   const entries = data.entries.filter(
     (e) =>
       filter === 'all' ||
@@ -738,7 +743,7 @@ function ChecklistRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(item.text);
-  const [optimisticCompleted,setOptimisticCompleted]=useState<boolean|null>(null);
+  const [optimisticCompleted, setOptimisticCompleted] = useState<boolean | null>(null);
   const close = () => {
     setEditing(false);
     onEditing(false);
@@ -781,11 +786,17 @@ function ChecklistRow({
           <label className={item.completed ? s.completedCheck : ''}>
             <input
               type="checkbox"
-              checked={optimisticCompleted??item.completed}
+              checked={optimisticCompleted ?? item.completed}
               disabled={readOnly || disabled}
-              onChange={async(e)=>{
+              onChange={async (e) => {
                 setOptimisticCompleted(e.target.checked);
-                try{await onSave({completed:e.target.checked});}catch{/* Parent shows the failure; revert to the persisted value. */}finally{setOptimisticCompleted(null);}
+                try {
+                  await onSave({ completed: e.target.checked });
+                } catch {
+                  /* Parent shows the failure; revert to the persisted value. */
+                } finally {
+                  setOptimisticCompleted(null);
+                }
               }}
             />
             <span>{item.text}</span>

@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
+import { spawnSync } from 'node:child_process';
 import { createPool, migrate, transaction } from '../src/db.js';
 import { createApp } from '../src/app.js';
 import { bootstrapUsers } from '../src/auth.js';
@@ -112,37 +113,116 @@ afterAll(async () => {
 });
 
 describe('persistent release API with real PostgreSQL', () => {
-  it('keeps the demo IP quota across resets and new sandbox sessions',async()=>{
-    const auth=await login('demo','releasedesk');
-    const releases=(await auth.agent.get('/api/releases')).body;
-    for(let i=0;i<10;i++)await post(auth,`/api/releases/${releases[0].id}/sync`).expect(200);
-    await post(auth,`/api/releases/${releases[0].id}/sync`).expect(429);
-    await post(auth,'/api/demo/reset').expect(200);
-    auth.csrf=(await session(auth.agent)).csrfToken;
-    const fresh=(await auth.agent.get('/api/releases')).body;
-    await post(auth,`/api/releases/${fresh[0].id}/sync`).expect(429);
+  it('rotates an owner password administratively and invalidates existing sessions', async () => {
+    const run = (password: string) =>
+      spawnSync(
+        process.execPath,
+        ['node_modules/tsx/dist/cli.mjs', 'apps/api/src/scripts/owner-password.ts'],
+        {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            ...config,
+            DATABASE_URL: config.DATABASE_URL,
+            OWNER_USERNAME: 'rotation-test-owner',
+            OWNER_PASSWORD: password,
+            PORT: '3000',
+          },
+          windowsHide: true,
+        },
+      );
+    expect(run('first-test-password').status).toBe(0);
+    const auth = await login('rotation-test-owner', 'first-test-password');
+    expect(run('second-test-password').status).toBe(0);
+    await auth.agent.get('/api/releases').expect(401);
+    await login('rotation-test-owner', 'second-test-password');
   });
-  it('requires explicit exclusion of missing commits before finalization',async()=>{
-    const auth=await login();const release=await draft(auth);
-    current={...current,commits:[fact(2)]};
-    await post(auth,`/api/releases/${release.id}/sync`).expect(200);
-    for(const item of release.checklist)await patch(auth,`/api/releases/${release.id}/checklist/${item.id}`,{completed:true});
-    const blocked=await post(auth,`/api/releases/${release.id}/finalize`).expect(409);
+  it('bounds active demo sandboxes without exposing another workspace', async () => {
+    const user = (await pool.query("SELECT id FROM users WHERE role='demo'")).rows[0];
+    await pool.query(
+      "INSERT INTO workspaces(user_id,kind,expires_at) SELECT $1,'demo',now()+interval '24 hours' FROM generate_series(1,100)",
+      [user.id],
+    );
+    const agent = request.agent(app);
+    const initial = await session(agent);
+    const result = await agent
+      .post('/api/auth/login')
+      .set('x-csrf-token', initial.csrfToken)
+      .send({ username: 'demo', password: 'releasedesk' })
+      .expect(503);
+    expect(result.body.error.code).toBe('DEMO_CAPACITY');
+  });
+  it('reclaims an interrupted sync safely', async () => {
+    const auth = await login();
+    const release = await draft(auth);
+    await pool.query(
+      "INSERT INTO sync_runs(repository_id,release_id,status,started_at) VALUES($1,$2,'running',now()-interval '3 minutes')",
+      [release.repositoryId, release.id],
+    );
+    const result = (await post(auth, `/api/releases/${release.id}/sync`).expect(200)).body;
+    expect(result.syncRuns.some((r: any) => r.errorCode === 'SYNC_EXPIRED')).toBe(true);
+    expect(result.entries).toEqual(release.entries);
+  });
+  it('keeps the demo IP quota across resets and new sandbox sessions', async () => {
+    const auth = await login('demo', 'releasedesk');
+    const releases = (await auth.agent.get('/api/releases')).body;
+    for (let i = 0; i < 10; i++)
+      await post(auth, `/api/releases/${releases[0].id}/sync`).expect(200);
+    await post(auth, `/api/releases/${releases[0].id}/sync`).expect(429);
+    await post(auth, '/api/demo/reset').expect(200);
+    auth.csrf = (await session(auth.agent)).csrfToken;
+    const fresh = (await auth.agent.get('/api/releases')).body;
+    await post(auth, `/api/releases/${fresh[0].id}/sync`).expect(429);
+  });
+  it('requires explicit exclusion of missing commits before finalization', async () => {
+    const auth = await login();
+    const release = await draft(auth);
+    current = { ...current, commits: [fact(2)] };
+    await post(auth, `/api/releases/${release.id}/sync`).expect(200);
+    for (const item of release.checklist)
+      await patch(auth, `/api/releases/${release.id}/checklist/${item.id}`, { completed: true });
+    const blocked = await post(auth, `/api/releases/${release.id}/finalize`).expect(409);
     expect(blocked.body.error.code).toBe('MISSING_COMMITS');
-    await patch(auth,`/api/releases/${release.id}/entries/${release.entries[0].id}`,{excluded:true});
-    await post(auth,`/api/releases/${release.id}/finalize`).expect(200);
+    await patch(auth, `/api/releases/${release.id}/entries/${release.entries[0].id}`, {
+      excluded: true,
+    });
+    await post(auth, `/api/releases/${release.id}/finalize`).expect(200);
   });
-  it('rotates login sessions and rejects the previous CSRF token',async()=>{
-    const agent=request.agent(app);const initial=await session(agent);
-    await agent.post('/api/auth/login').set('x-csrf-token',initial.csrfToken).send({username:'sam',password:'test-owner-password'}).expect(200);
-    const currentSession=await session(agent);expect(currentSession.csrfToken).not.toBe(initial.csrfToken);
-    await agent.post('/api/repositories').set('x-csrf-token',initial.csrfToken).send({owner:'example',name:'repo'}).expect(403);
-    await agent.post('/api/repositories').set('x-csrf-token','é'.repeat(64)).send({owner:'example',name:'repo'}).expect(403);
+  it('rotates login sessions and rejects the previous CSRF token', async () => {
+    const agent = request.agent(app);
+    const initial = await session(agent);
+    await agent
+      .post('/api/auth/login')
+      .set('x-csrf-token', initial.csrfToken)
+      .send({ username: 'sam', password: 'test-owner-password' })
+      .expect(200);
+    const currentSession = await session(agent);
+    expect(currentSession.csrfToken).not.toBe(initial.csrfToken);
+    await agent
+      .post('/api/repositories')
+      .set('x-csrf-token', initial.csrfToken)
+      .send({ owner: 'example', name: 'repo' })
+      .expect(403);
+    await agent
+      .post('/api/repositories')
+      .set('x-csrf-token', 'é'.repeat(64))
+      .send({ owner: 'example', name: 'repo' })
+      .expect(403);
   });
-  it('rate limits repeated invalid sign-ins',async()=>{
-    const agent=request.agent(app);const initial=await session(agent);
-    for(let i=0;i<10;i++)await agent.post('/api/auth/login').set('x-csrf-token',initial.csrfToken).send({username:'sam',password:'incorrect'}).expect(401);
-    await agent.post('/api/auth/login').set('x-csrf-token',initial.csrfToken).send({username:'sam',password:'incorrect'}).expect(429);
+  it('rate limits repeated invalid sign-ins', async () => {
+    const agent = request.agent(app);
+    const initial = await session(agent);
+    for (let i = 0; i < 10; i++)
+      await agent
+        .post('/api/auth/login')
+        .set('x-csrf-token', initial.csrfToken)
+        .send({ username: 'sam', password: 'incorrect' })
+        .expect(401);
+    await agent
+      .post('/api/auth/login')
+      .set('x-csrf-token', initial.csrfToken)
+      .send({ username: 'sam', password: 'incorrect' })
+      .expect(429);
   });
   it('preserves every editorial decision and checklist when new commits arrive', async () => {
     const auth = await login();
@@ -308,6 +388,19 @@ describe('persistent release API with real PostgreSQL', () => {
       .set('x-csrf-token', auth.csrf)
       .send({ owner: 'example', name: 'private' })
       .expect(422);
+    const release = await draft(auth);
+    vi.mocked(github.repository).mockResolvedValueOnce({
+      githubId: 123,
+      owner: 'example',
+      name: 'repository',
+      private: true,
+      defaultBranch: 'master',
+      htmlUrl: 'https://github.com/example/repository',
+    });
+    await post(auth, `/api/releases/${release.id}/sync`).expect(422);
+    expect((await auth.agent.get(`/api/releases/${release.id}`)).body.entries).toEqual(
+      release.entries,
+    );
   });
   it('supports empty comparisons, checklist CRUD, template snapshots, and draft deletion', async () => {
     const auth = await login();

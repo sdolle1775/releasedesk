@@ -44,6 +44,11 @@ test('a human edit survives sync, exports exactly, and finalizes into immutable 
   const markdown = await page.getByRole('textbox', { name: 'Exported Markdown' }).inputValue();
   expect(markdown).toContain('A careful human rewrite that survives sync');
   expect(markdown).toContain('Reviewed by a person. Keep this exact context.');
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByRole('button', { name: 'Copy Markdown', exact: true }).click();
+  expect((await page.evaluate(() => navigator.clipboard.readText())).replaceAll('\r\n', '\n')).toBe(
+    markdown,
+  );
   if (info.project.name === 'mobile')
     await page.getByRole('button', { name: 'Entries & checklist' }).click();
   const checks = page.getByRole('checkbox');
@@ -71,6 +76,9 @@ test('creates a draft from references and prevents accidental navigation away fr
   await demo(page);
   await page.getByRole('button', { name: 'New release', exact: true }).click();
   const dialog = page.getByRole('dialog');
+  await dialog
+    .getByRole('combobox', { name: 'Repository', exact: true })
+    .selectOption({ label: 'sdolle1775/marvel-lcg' });
   await dialog.getByLabel('Release title').fill('Browser-created release');
   await dialog.getByLabel('Base reference').fill('v1');
   await dialog.getByRole('button', { name: 'Create draft' }).click();
@@ -83,8 +91,15 @@ test('creates a draft from references and prevents accidental navigation away fr
   await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
   await first.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: 'Rename release' }).click();
-  await page.getByLabel('Release title', { exact: true }).fill('Renamed browser release');
+  await page.getByLabel('Release title', { exact: true }).fill('v1.4.0 — Release preparation');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await first.getByRole('button', { name: /Edit entry/ }).click();
+  await first.getByLabel('Entry title').fill('Correct attack targets in Battle in the Bodega');
+  await first.getByLabel('Category', { exact: true }).selectOption('fix');
+  await first
+    .getByLabel('Notes', { exact: true })
+    .fill('Attack targeting now follows the printed card wording.');
+  await first.getByRole('button', { name: 'Save entry' }).click();
   if (info.project.name === 'desktop')
     await page.screenshot({ path: 'docs/screenshots/release-workspace.png', fullPage: true });
   else await page.screenshot({ path: 'docs/screenshots/mobile-workspace.png', fullPage: true });

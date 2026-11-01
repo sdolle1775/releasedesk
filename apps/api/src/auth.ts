@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 import type { Config } from './config.js';
 import { transaction } from './db.js';
 import { WorkspaceService } from './service.js';
+import { ensure } from './errors.js';
 
 export const passwordOptions = {
   type: argon2.argon2id,
@@ -42,12 +43,24 @@ export async function createSandbox(
   oldWorkspaceId?: string,
 ) {
   return transaction(service.pool, async (db) => {
+    await db.query("SELECT pg_advisory_xact_lock(hashtextextended('demo-sandbox-capacity',0))");
     await db.query("DELETE FROM workspaces WHERE kind='demo' AND expires_at<=now()");
+    await db.query("DELETE FROM demo_sync_events WHERE occurred_at<now()-interval '24 hours'");
+    await db.query("DELETE FROM github_cache WHERE cached_at<now()-interval '7 days'");
     if (oldWorkspaceId)
       await db.query("DELETE FROM workspaces WHERE id=$1 AND user_id=$2 AND kind='demo'", [
         oldWorkspaceId,
         userId,
       ]);
+    const active = Number(
+      (await db.query("SELECT count(*) FROM workspaces WHERE kind='demo'")).rows[0].count,
+    );
+    ensure(
+      active < 100,
+      503,
+      'DEMO_CAPACITY',
+      'All demo desks are occupied. Please try again later.',
+    );
     const workspace = (
       await db.query(
         "INSERT INTO workspaces(user_id,kind,expires_at) VALUES($1,'demo',now()+interval '24 hours') RETURNING id",

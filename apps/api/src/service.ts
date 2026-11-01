@@ -164,7 +164,14 @@ export class WorkspaceService {
     const repo = await this.repository(actor, id);
     if (repo.source === 'sample')
       return { tags: [{ name: 'sample-base', sha: 'a'.repeat(40) }], hasMore: false };
-    return this.github.tags(repo.owner, repo.name, page);
+    const current = await this.github.repository(repo.owner, repo.name);
+    ensure(
+      !current.private,
+      422,
+      'PRIVATE_REPOSITORY',
+      'This repository is no longer public. Saved drafts remain available.',
+    );
+    return this.github.tags(current.owner, current.name, page);
   }
   private async releaseRow(actor: Actor, id: string, db: DB = this.pool, lock = false) {
     const row = (
@@ -185,6 +192,10 @@ export class WorkspaceService {
     );
   }
   private async noActiveSync(db: DB, id: string) {
+    await db.query(
+      "UPDATE sync_runs SET status='failed',finished_at=now(),error_code='SYNC_EXPIRED',error_message='Sync interrupted; retry safely.' WHERE release_id=$1 AND status='running' AND started_at<now()-interval '2 minutes'",
+      [id],
+    );
     ensure(
       !(await db.query("SELECT 1 FROM sync_runs WHERE release_id=$1 AND status='running'", [id]))
         .rowCount,
@@ -454,11 +465,18 @@ export class WorkspaceService {
         };
       } else {
         const signal = AbortSignal.timeout(45000);
+        const current = await this.github.repository(row.repo_owner, row.repo_name);
+        ensure(
+          !current.private,
+          422,
+          'PRIVATE_REPOSITORY',
+          'This repository is no longer public. Your saved draft is unchanged.',
+        );
         const base =
           row.base_sha ??
-          (await this.github.resolve(row.repo_owner, row.repo_name, row.base_ref, signal));
-        const head = await this.github.resolve(row.repo_owner, row.repo_name, row.head_ref, signal);
-        comparison = await this.github.compare(row.repo_owner, row.repo_name, base, head, signal);
+          (await this.github.resolve(current.owner, current.name, row.base_ref, signal));
+        const head = await this.github.resolve(current.owner, current.name, row.head_ref, signal);
+        comparison = await this.github.compare(current.owner, current.name, base, head, signal);
       }
       await transaction(this.pool, async (db) => {
         this.assertDraft(await this.releaseRow(actor, id, db, true));

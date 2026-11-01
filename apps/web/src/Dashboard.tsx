@@ -444,6 +444,7 @@ function CreateRelease({
         <label>
           Repository
           <select
+            aria-label="Repository"
             value={repositoryId}
             onChange={(e) => {
               setRepositoryId(e.target.value);

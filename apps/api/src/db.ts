@@ -24,12 +24,14 @@ export async function transaction<T>(pool: Pool, fn: (db: PoolClient) => Promise
     db.release();
   }
 }
-export async function migrate(url: string) {
+export async function migrate(url: string, schema = 'public') {
   await runner({
     databaseUrl: url,
     dir: fileURLToPath(new URL('../migrations/', import.meta.url)),
     direction: 'up',
     migrationsTable: 'pgmigrations',
+    migrationsSchema: schema,
+    schema,
     count: Infinity,
     log: () => {},
   });
