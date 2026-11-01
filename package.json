@@ -1,0 +1,39 @@
+{
+  "name": "releasedesk",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"npm run dev -w @releasedesk/api\" \"npm run dev -w @releasedesk/web\"",
+    "build": "npm run build -w @releasedesk/contracts && npm run build -w @releasedesk/api && npm run build -w @releasedesk/web",
+    "start": "node apps/api/dist/server.js",
+    "db:migrate": "tsx apps/api/src/scripts/migrate.ts",
+    "db:seed": "tsx apps/api/src/scripts/seed.ts",
+    "db:local": "node scripts/local-postgres.mjs",
+    "dev:local": "node scripts/local-dev.mjs",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc -p packages/contracts/tsconfig.json --noEmit && tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:all": "npm run lint && npm run typecheck && npm test && npm run build && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.10.0",
+    "@types/pg": "^8.15.0",
+    "@types/supertest": "^6.0.3",
+    "concurrently": "^9.2.1",
+    "embedded-postgres": "17.11.0-beta.19",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^4.0.0"
+  }
+}

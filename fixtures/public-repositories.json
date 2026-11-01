@@ -1,0 +1,105 @@
+{
+  "recordedAt": "2026-11-01T19:56:32.432Z",
+  "source": "Public GitHub REST API comparisons; no private data or credentials",
+  "repositories": [
+    {
+      "githubId": 1320134495,
+      "owner": "sdolle1775",
+      "name": "marvel-lcg",
+      "defaultBranch": "master",
+      "htmlUrl": "https://github.com/sdolle1775/marvel-lcg",
+      "baseSha": "d081b7e8e26911b4d6d7ef6ad93920ea21dd66c6",
+      "headSha": "253a9df03ec0d10e26493df631a5293bdd8d7f5a",
+      "commits": [
+        {
+          "sha": "2e35924adff6ecdaf7618bcffe366663afe48fb1",
+          "message": "Fix Battle in the Bodega attack target trigger\n\nMatch the printed is-attacked wording: check the attacked character play area, damage the attacker, and add threat. Correct the card text and regression coverage, including the dependent payment replay fixture.\n\nValidation: 218 related tests passed; the corrected issue 142 save replays all 23 choices with matching checksums.\n\nRefs #142.",
+          "author": "sdolle1775",
+          "date": "2026-10-18T16:32:15Z",
+          "url": "https://github.com/sdolle1775/marvel-lcg/commit/2e35924adff6ecdaf7618bcffe366663afe48fb1"
+        },
+        {
+          "sha": "c6119b50db2900f58789f2661382c1c1987bd4e9",
+          "message": "Fix Protection Racket excess damage and printed card text",
+          "author": "sdolle1775",
+          "date": "2026-10-18T16:46:59Z",
+          "url": "https://github.com/sdolle1775/marvel-lcg/commit/c6119b50db2900f58789f2661382c1c1987bd4e9"
+        },
+        {
+          "sha": "50724c4db61ac4e1fcaefeac52f178e219b31faf",
+          "message": "Rework Civil War scenarios and faction modular selection\n\nSeparate leaders and main scheme stages, add the remaining scheme scripts and artwork, and fix scheme resolution edge cases. Restore preconstructed modular defaults and add faction randomization across Civil War and Synthezoid Smackdown.",
+          "author": "sdolle1775",
+          "date": "2026-10-18T17:56:10Z",
+          "url": "https://github.com/sdolle1775/marvel-lcg/commit/50724c4db61ac4e1fcaefeac52f178e219b31faf"
+        },
+        {
+          "sha": "f50d67206708d4a32dbd5a2b7657ef15fcc49679",
+          "message": "Complete shared Civil War scheme setup and fix scheme resolution",
+          "author": "sdolle1775",
+          "date": "2026-10-18T18:29:46Z",
+          "url": "https://github.com/sdolle1775/marvel-lcg/commit/f50d67206708d4a32dbd5a2b7657ef15fcc49679"
+        },
+        {
+          "sha": "5f1e0ec0adf4ec721ddaf14cdb6b6884f33c221e",
+          "message": "Refresh scenario checksum and artwork support notice",
+          "author": "sdolle1775",
+          "date": "2026-10-18T18:40:17Z",
+          "url": "https://github.com/sdolle1775/marvel-lcg/commit/5f1e0ec0adf4ec721ddaf14cdb6b6884f33c221e"
+        },
+        {
+          "sha": "253a9df03ec0d10e26493df631a5293bdd8d7f5a",
+          "message": "Release v1.3.4 and summarize community build highlights",
+          "author": "sdolle1775",
+          "date": "2026-10-18T19:01:48Z",
+          "url": "https://github.com/sdolle1775/marvel-lcg/commit/253a9df03ec0d10e26493df631a5293bdd8d7f5a"
+        }
+      ]
+    },
+    {
+      "githubId": 1323223153,
+      "owner": "sdolle1775",
+      "name": "FESProject_Summarist",
+      "defaultBranch": "main",
+      "htmlUrl": "https://github.com/sdolle1775/FESProject_Summarist",
+      "baseSha": "51332b5bae52e2334e18d118e1d74f33c9ea9d5d",
+      "headSha": "1a774ef839b0bee4e433c9c0649b0671b2921024",
+      "commits": [
+        {
+          "sha": "7ad721088fc8629dd23b7cec42593eae64704214",
+          "message": "Add saved book library",
+          "author": "sdolle1775",
+          "date": "2026-08-04T18:17:58Z",
+          "url": "https://github.com/sdolle1775/FESProject_Summarist/commit/7ad721088fc8629dd23b7cec42593eae64704214"
+        },
+        {
+          "sha": "cdb768633dfd48ccf26e39e5afd1a568e7d45ad3",
+          "message": "Deploy app with GitHub Pages",
+          "author": "sdolle1775",
+          "date": "2026-08-04T18:24:57Z",
+          "url": "https://github.com/sdolle1775/FESProject_Summarist/commit/cdb768633dfd48ccf26e39e5afd1a568e7d45ad3"
+        },
+        {
+          "sha": "88f7ead7256fedf2e64aea2cd3fe819b88124f8f",
+          "message": "Merge pull request #1 from sdolle1775/agent/save-to-library\n\nAdd saved library and deploy to GitHub Pages",
+          "author": "sdolle1775",
+          "date": "2026-08-04T18:25:39Z",
+          "url": "https://github.com/sdolle1775/FESProject_Summarist/commit/88f7ead7256fedf2e64aea2cd3fe819b88124f8f"
+        },
+        {
+          "sha": "bf573b0ffd0856d3457d244fd9920732eafa8c86",
+          "message": "Update README.md",
+          "author": "sdolle1775",
+          "date": "2026-08-04T18:29:56Z",
+          "url": "https://github.com/sdolle1775/FESProject_Summarist/commit/bf573b0ffd0856d3457d244fd9920732eafa8c86"
+        },
+        {
+          "sha": "1a774ef839b0bee4e433c9c0649b0671b2921024",
+          "message": "Configure Summarist for Vercel deployment",
+          "author": "sdolle1775",
+          "date": "2026-10-14T22:54:57Z",
+          "url": "https://github.com/sdolle1775/FESProject_Summarist/commit/1a774ef839b0bee4e433c9c0649b0671b2921024"
+        }
+      ]
+    }
+  ]
+}

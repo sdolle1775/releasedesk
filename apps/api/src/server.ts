@@ -1,0 +1,14 @@
+import { readConfig } from './config.js';
+import { createPool,migrate } from './db.js';
+import { bootstrapUsers } from './auth.js';
+import { createApp } from './app.js';
+const config=readConfig();
+await migrate(config.DATABASE_DIRECT_URL||config.DATABASE_URL);
+const pool=createPool(config.DATABASE_URL);
+await bootstrapUsers(pool,config);
+await pool.query("DELETE FROM workspaces WHERE kind='demo' AND expires_at<=now()");
+await pool.query("DELETE FROM github_cache WHERE cached_at<now()-interval '7 days'");
+const app=createApp(config,pool);
+const server=app.listen(config.PORT,config.NODE_ENV==='production'?'0.0.0.0':'127.0.0.1',()=>console.log(`ReleaseDesk API: http://localhost:${config.PORT}`));
+const shutdown=()=>server.close(async()=>{app.locals.sessionStore.close();await pool.end();process.exit(0);});
+process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
