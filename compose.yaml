@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: releasedesk
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-releasedesk}
+      POSTGRES_DB: releasedesk
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U releasedesk -d releasedesk']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  app:
+    image: releasedesk:local
+    build: .
+    ports:
+      - '127.0.0.1:3000:3000'
+    environment:
+      # Local HTTP only. The same image uses production HTTPS settings on Render.
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3000
+      APP_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgres://releasedesk:${POSTGRES_PASSWORD:-releasedesk}@db:5432/releasedesk
+      SESSION_SECRET: ${SESSION_SECRET:-local-compose-session-secret-change-before-hosting}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      OWNER_USERNAME: ${OWNER_USERNAME:-sam}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-}
+      DEMO_ENABLED: 'true'
+      DEMO_USERNAME: demo
+      DEMO_PASSWORD: releasedesk
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+volumes:
+  postgres_data:
