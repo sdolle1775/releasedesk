@@ -242,7 +242,7 @@ export function ReleasePage() {
       {dirty && (
         <div className={s.unsaved} role="status">
           <Pencil size={14} />
-          You have open edits. Save or cancel them before syncing or finalizing.
+          You have open edits. Save or cancel them before changing filters, syncing, or finalizing.
         </div>
       )}
       {data.source === 'sample' && (
@@ -300,6 +300,7 @@ export function ReleasePage() {
                 <button
                   key={value}
                   className={filter === value ? s.filterActive : ''}
+                  disabled={busy || dirty}
                   onClick={() => setFilter(value)}
                 >
                   {value[0].toUpperCase() + value.slice(1)}

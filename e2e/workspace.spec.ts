@@ -108,6 +108,40 @@ test('creates a draft from references and prevents accidental navigation away fr
   );
 });
 
+test('entry filters protect open edits and recover after saving or canceling', async ({ page }) => {
+  await demo(page);
+  await page.getByRole('button', { name: 'Try the sync demo' }).click();
+  await expect(page.getByTestId('release-title')).toBeVisible();
+  const first = page.getByTestId('changelog-entry').first();
+  const included = page.getByRole('button', { name: 'Included', exact: true });
+  const excluded = page.getByRole('button', { name: 'Excluded', exact: true });
+  await included.click();
+  await first.getByRole('button', { name: /Edit entry/ }).click();
+  await first.getByLabel('Entry title').fill('Keep this edit through filtering');
+  for (const name of ['All', 'Included', 'Excluded', 'Missing']) {
+    await expect(page.getByRole('button', { name, exact: true })).toBeDisabled();
+  }
+  await first.getByLabel('Exclude from release notes').check();
+  await first.getByRole('button', { name: 'Save entry' }).click();
+  await expect(excluded).toBeEnabled();
+  await excluded.click();
+  await expect(
+    first.getByRole('heading', { name: 'Keep this edit through filtering' }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sync commits' })).toBeEnabled();
+
+  await first.getByRole('button', { name: /Edit entry/ }).click();
+  await first.getByLabel('Entry title').fill('Discard only this second edit');
+  await first.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(included).toBeEnabled();
+  await included.click();
+  await excluded.click();
+  await expect(
+    first.getByRole('heading', { name: 'Keep this edit through filtering' }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sync commits' })).toBeEnabled();
+});
+
 test('separate demo sessions remain isolated after a reset', async ({ page, browser }, info) => {
   test.skip(
     info.project.name === 'mobile',
