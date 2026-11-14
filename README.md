@@ -157,6 +157,18 @@ Coverage includes editorial preservation, independent drafts sharing a SHA, miss
 
 To refresh screenshots from the browser tests, run them locally; screenshots under `docs/screenshots` are actual application renders. Public seed recordings are refreshed manually with `node scripts/record-fixtures.mjs`; this is intentionally outside automated tests.
 
+### Manual live verification
+
+With the local app running through `npm run dev:local`, run this in a second terminal.
+
+```sh
+npm run smoke:live
+```
+
+The command checks the API at `http://127.0.0.1:3000`. Set `RELEASEDESK_URL` to another running instance's HTTP(S) origin when needed. Demo access must be enabled. The check uses the published demo credentials and imports the pinned public comparison from the first repository in `fixtures/public-repositories.json` through the real GitHub API.
+
+It verifies login rotation, import, preserved entry edits and checklist decisions after sync, exact Markdown export, immutable finalization, workspace isolation, sandbox reset, and logout. It creates two demo sessions, resets the first sandbox after verification, and signs out both sessions. Remaining sandbox data expires normally after 24 hours. Each successful run consumes two live import/sync quota events and is subject to GitHub's rate limits. Failures exit with a nonzero status and an error message. Run this check manually when preparing a checkpoint.
+
 ## Deployment and operation
 
 [`render.yaml`](render.yaml) provisions the free Docker web service; PostgreSQL is supplied by Neon. [`docs/operations.md`](docs/operations.md) covers environment variables, owner setup, migration locking, logs, cold starts, backups/restores, rollback, and the monthly demo check.

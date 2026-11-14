@@ -6,7 +6,28 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.enum(['127.0.0.1', '0.0.0.0']).optional(),
-  APP_ORIGIN: z.url().default('http://localhost:5173'),
+  APP_ORIGIN: z
+    .url()
+    .transform((value, context) => {
+      const url = new URL(value);
+      if (
+        !['http:', 'https:'].includes(url.protocol) ||
+        url.username ||
+        url.password ||
+        url.pathname !== '/' ||
+        url.search ||
+        url.hash
+      ) {
+        context.addIssue({
+          code: 'custom',
+          message:
+            'APP_ORIGIN must be an HTTP(S) origin without credentials, a page path, query, or fragment',
+        });
+        return z.NEVER;
+      }
+      return url.origin;
+    })
+    .default('http://localhost:5173'),
   DATABASE_URL: z.string().min(1),
   DATABASE_DIRECT_URL: z.string().optional(),
   SESSION_SECRET: z.string().min(32),

@@ -7,7 +7,7 @@ Sam will activate hosting after the application handoff. No Render or Neon resou
 1. Create a Neon project using PostgreSQL 17. Select a region near the Render service.
 2. Save the pooled PostgreSQL URL as `DATABASE_URL` and the direct, non-pooler URL as `DATABASE_DIRECT_URL`. Preserve the provider's TLS parameters. Keep these in Render environment variables, never in Git.
 3. In Render, create a Blueprint from `sdolle1775/releasedesk` and the committed `render.yaml`. It creates one free Docker web service. No Render database is needed.
-4. Set `APP_ORIGIN` to the exact public HTTPS origin without a trailing slash. Set `OWNER_USERNAME` and a private `OWNER_PASSWORD` of at least 12 characters. The Blueprint generates `SESSION_SECRET`.
+4. Set `APP_ORIGIN` to the public HTTPS origin. A trailing root slash, hostname casing, and default ports are normalized to match browser Origin headers. Credentials, page paths, query strings, and fragments are rejected at startup. Set `OWNER_USERNAME` and a private `OWNER_PASSWORD` of at least 12 characters. The Blueprint generates `SESSION_SECRET`.
 5. Set `GITHUB_TOKEN` to a server-only fine-grained GitHub token with the minimum read access needed for public repository contents. The API rejects private repositories even if the credential could read them.
 6. Keep `DEMO_ENABLED=true`, `DEMO_USERNAME=demo`, and `DEMO_PASSWORD=releasedesk` to enable the public sandbox. These are intentionally public and confer no owner access.
 7. Deploy after CI checks pass. Startup applies pending SQL migrations under node-pg-migrate's database advisory lock, bootstraps missing login users, then listens on Render's injected `PORT`.

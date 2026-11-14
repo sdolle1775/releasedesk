@@ -25,6 +25,7 @@
     "test": "vitest run",
     "pretest": "npm run build -w @releasedesk/contracts",
     "test:e2e": "playwright test",
+    "smoke:live": "node scripts/live-smoke.mjs",
     "test:all": "npm run lint && npm run typecheck && npm test && npm run build && npm run test:e2e"
   },
   "devDependencies": {

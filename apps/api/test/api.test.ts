@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { createPool, migrate, transaction } from '../src/db.js';
 import { createApp } from '../src/app.js';
 import { bootstrapUsers } from '../src/auth.js';
-import type { Config } from '../src/config.js';
+import { readConfig, type Config } from '../src/config.js';
 import type { Comparison, GitHubSource } from '../src/github.js';
 import { AppError } from '../src/errors.js';
 import type { ReleaseDetail } from '@releasedesk/contracts';
@@ -113,6 +113,60 @@ afterAll(async () => {
 });
 
 describe('persistent release API with real PostgreSQL', () => {
+  it('accepts the normalized browser origin and uses secure cookies behind an HTTPS proxy', async () => {
+    const production = createApp(
+      readConfig({
+        ...config,
+        PORT: String(config.PORT),
+        NODE_ENV: 'production',
+        APP_ORIGIN: 'https://ReleaseDesk.example:443/',
+      }),
+      pool,
+      github,
+    );
+    try {
+      const initial = await request(production)
+        .get('/api/auth/session')
+        .set('X-Forwarded-Proto', 'https')
+        .expect(200);
+      const signedIn = await request(production)
+        .post('/api/auth/login')
+        .set('X-Forwarded-Proto', 'https')
+        .set('Origin', 'https://releasedesk.example')
+        .set('Cookie', initial.headers['set-cookie'][0].split(';')[0])
+        .set('x-csrf-token', initial.body.csrfToken)
+        .send({ username: config.OWNER_USERNAME, password: config.OWNER_PASSWORD })
+        .expect(200);
+      const cookie = signedIn.headers['set-cookie'][0];
+      expect(cookie).toContain('HttpOnly');
+      expect(cookie).toContain('Secure');
+      expect(cookie).toContain('SameSite=Lax');
+      const session = await request(production)
+        .get('/api/auth/session')
+        .set('X-Forwarded-Proto', 'https')
+        .set('Cookie', cookie.split(';')[0])
+        .expect(200);
+      expect(session.body.authenticated).toBe(true);
+      await request(production)
+        .post('/api/auth/logout')
+        .set('X-Forwarded-Proto', 'https')
+        .set('Origin', 'https://untrusted.example')
+        .set('Cookie', cookie.split(';')[0])
+        .set('x-csrf-token', session.body.csrfToken)
+        .send({})
+        .expect(403);
+      await request(production)
+        .post('/api/auth/logout')
+        .set('X-Forwarded-Proto', 'https')
+        .set('Origin', 'https://releasedesk.example')
+        .set('Cookie', cookie.split(';')[0])
+        .set('x-csrf-token', session.body.csrfToken)
+        .send({})
+        .expect(204);
+    } finally {
+      production.locals.sessionStore.close();
+    }
+  });
   it('rotates an owner password administratively and invalidates existing sessions', async () => {
     const run = (password: string) =>
       spawnSync(

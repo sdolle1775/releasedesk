@@ -21,6 +21,26 @@ Automated browser checks use recorded comparisons. The merged PR records an earl
 
 The next checkpoint is a verified hosted demo. Activate Render and Neon, configure the owner login and server-side GitHub credential, then verify a live import, secure login, export, finalization, and independent demo sessions at the public URL. Record that URL in the README after verification. Follow the [operations runbook](operations.md).
 
+## Checkpoint 2 — repeatable live release verification
+
+Reviewed November 14, 2026, starting from checkpoint `7707167`. This checkpoint focuses on local release readiness.
+
+`npm run smoke:live` now exercises a running application through its HTTP API using two isolated demo sessions. It imports a pinned public comparison through GitHub, edits an entry and checklist, syncs, exports Markdown, finalizes and reloads the snapshot, rejects finalized changes and cross-workspace access, resets one sandbox, and verifies logout. The command reports failures with a nonzero exit status and attempts to sign out verification sessions even when a check fails. See the [manual live verification instructions](../README.md#manual-live-verification).
+
+The configuration review found that a trailing slash in `APP_ORIGIN` could pass startup validation but reject legitimate browser writes. Valid origins now normalize hostname casing, default ports, and a trailing root slash. URLs containing credentials, a page path, query, or fragment fail at startup. Regression coverage also verifies secure session cookies behind an HTTPS proxy and rejection of an untrusted request origin.
+
+| Verification | Result |
+| --- | --- |
+| Lint, TypeScript, and production build | Passed |
+| Unit, adapter, migration, API, and configuration tests | 44 passed against real PostgreSQL 17 |
+| Desktop/mobile browser workflows | 7 passed, with the duplicate mobile isolation case intentionally skipped |
+| Live GitHub verification | Passed against six commits from `sdolle1775/marvel-lcg`, including a run through the built API server |
+| Production dependency audit | `npm audit --omit=dev` reported zero vulnerabilities |
+
+The live check used GitHub's unauthenticated API. Two verification runs consumed four live import/sync quota events from this machine's demo quota. Each run reset its first sandbox and signed out both sessions. Remaining seeded sandboxes expire through normal maintenance.
+
+Hosting activation and verification remain a future checkpoint. HTTPS cookie behavior here was checked through local integration tests with proxy headers. A public deployment still needs the browser checks in the [operations runbook](operations.md).
+
 ## Study and explain the implementation
 
 Use these checkpoints to study and explain the implementation. Each has a runnable verification and a question worth answering in your own words.
